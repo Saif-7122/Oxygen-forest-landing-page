@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- ChatGPT Pixel -->
+<script>
+  !function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");
+  oaiq("init",{pixelId:"TSqRGgfEN8Dvdh1CyRhTrx",debug:true});
+  oaiq("measure","page_viewed",{type:"contents"});
+</script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18315017390"></script>
 <script>
@@ -754,20 +760,9 @@ var visitOverlay=document.getElementById('visitOverlay');
 var popupDone=false;
 try{popupDone=sessionStorage.getItem('of_popup')==='1'}catch(e){}
 function showPopup(kind){
-  if(popupDone)return;
-  popupDone=true;
-  try{sessionStorage.setItem('of_popup','1')}catch(e){}
-  var enq=document.getElementById('enquire');
-  if(enq&&enq.getBoundingClientRect().top<window.innerHeight)return;
-  var el=kind==='visit'?visitOverlay:overlay;
-  el.classList.add('show');
-  document.body.style.overflow='hidden';
-  dataLayer.push({event:'popup_shown',popup_variant:kind==='visit'?'hosted_visit':'price_sheet'});
+  return;
 }
-function closePopup(){overlay.classList.remove('show');visitOverlay.classList.remove('show');document.body.style.overflow=''}
-setTimeout(function(){showPopup('price')},12000);
-document.addEventListener('mouseout',function(e){if(!e.relatedTarget&&e.clientY<=0)showPopup('visit')});
-window.addEventListener('scroll',function onS(){var m=document.documentElement.scrollHeight-window.innerHeight;if(m>0&&window.scrollY/m>=.3){showPopup('price');window.removeEventListener('scroll',onS)}},{passive:true});
+function closePopup(){if(overlay)overlay.classList.remove('show');if(visitOverlay)visitOverlay.classList.remove('show');document.body.style.overflow=''}
 document.getElementById('popupClose').addEventListener('click',closePopup);
 document.getElementById('visitClose').addEventListener('click',closePopup);
 overlay.addEventListener('click',function(e){if(e.target===overlay)closePopup()});
@@ -814,20 +809,6 @@ bindLeadForm(document.getElementById('pageForm'),'page');
 bindLeadForm(document.getElementById('popupForm'),'popup');
 bindLeadForm(document.getElementById('visitForm'),'popup_visit');
 })();
-</script>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18315017390"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-18315017390');
-</script>
-<script>
-  gtag('config', 'AW-18315017390/A9lBCN7JxJAdEK75o51E', {
-    'phone_conversion_number': '81217 77770'
-  });
 </script>
 </body>
 </html>
