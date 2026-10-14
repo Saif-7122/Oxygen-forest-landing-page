@@ -5,7 +5,20 @@
 <script>
   !function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");
   oaiq("init",{pixelId:"TSqRGgfEN8Dvdh1CyRhTrx",debug:true});
-  oaiq("measure","lead_created",{type:"customer_action"});
+  (function(){
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var eventId = params.get('eid') || sessionStorage.getItem('of_lead_event_id');
+      if (eventId) {
+        oaiq("measure", "lead_created", { type: "customer_action" }, { event_id: eventId });
+        sessionStorage.removeItem('of_lead_event_id');
+      } else {
+        oaiq("measure", "lead_created", { type: "customer_action" });
+      }
+    } catch(e) {
+      oaiq("measure", "lead_created", { type: "customer_action" });
+    }
+  })();
 </script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18315017390"></script>

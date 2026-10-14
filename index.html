@@ -698,12 +698,16 @@ window.dataLayer=window.dataLayer||[];
 var ATTRIB={};
 try{
   ATTRIB=JSON.parse(sessionStorage.getItem('of_attrib')||'{}');
-  var q=new URLSearchParams(location.search),keys=['gclid','gbraid','wbraid','fbclid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'],touched=false;
+  var q=new URLSearchParams(location.search),keys=['gclid','gbraid','wbraid','fbclid','utm_source','utm_medium','utm_campaign','utm_term','utm_content','oppref'],touched=false;
   keys.forEach(function(k){var v=q.get(k);if(v){ATTRIB[k]=v;touched=true}});
+  if(!ATTRIB.oppref){
+    var m=document.cookie.match(/(?:^|;\s*)__oppref=([^;]+)/);
+    if(m){ATTRIB.oppref=decodeURIComponent(m[1]);touched=true}
+  }
   if(!ATTRIB.first_seen){ATTRIB.first_seen=new Date().toISOString();ATTRIB.landing_page=location.pathname;ATTRIB.referrer=document.referrer||'';touched=true}
   if(touched)sessionStorage.setItem('of_attrib',JSON.stringify(ATTRIB));
 }catch(e){}
-function attribRef(){return ATTRIB.gclid||ATTRIB.gbraid||ATTRIB.wbraid||ATTRIB.fbclid||''}
+function attribRef(){return ATTRIB.oppref||ATTRIB.gclid||ATTRIB.gbraid||ATTRIB.wbraid||ATTRIB.fbclid||''}
 function attribSuffix(){var p=[];if(ATTRIB.utm_campaign)p.push('campaign: '+ATTRIB.utm_campaign);var r=attribRef();if(r)p.push('ref: '+r);return p.length?'\n\n('+p.join(' | ')+')':''}
 function waHref(msg){return 'https://wa.me/'+WHATSAPP_NUMBER+'?text='+encodeURIComponent((msg||WA_BASE_MSG)+attribSuffix())}
 
@@ -791,10 +795,70 @@ function bindLeadForm(f,source){
     var visit=(f.querySelector('[name=visit]')||{}).value||'';
     var buyer=(f.querySelector('[name=buyer]')||{}).value||'';
     var e164=code+phone;
-    dataLayer.push({event:'generate_lead',lead_source:source,lead_channel:'form',lead_purpose:purpose,lead_visit:visit,lead_buyer_type:buyer,value:LEAD_VALUE,currency:'INR',gclid:ATTRIB.gclid||'',gbraid:ATTRIB.gbraid||'',wbraid:ATTRIB.wbraid||'',utm_source:ATTRIB.utm_source||'',utm_medium:ATTRIB.utm_medium||'',utm_campaign:ATTRIB.utm_campaign||'',enhanced_conversion_data:{phone_number:e164,first_name:name}});
-    /* hand the lead to the browser in the background (survives navigation), then redirect without waiting on Apps Script */
+    var eventId='lead_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    try{sessionStorage.setItem('of_lead_event_id',eventId)}catch(err){}
+
+    dataLayer.push({
+      event:'generate_lead',
+      lead_source:source,
+      lead_channel:'form',
+      lead_purpose:purpose,
+      lead_visit:visit,
+      lead_buyer_type:buyer,
+      value:LEAD_VALUE,
+      currency:'INR',
+      event_id:eventId,
+      oppref:ATTRIB.oppref||'',
+      gclid:ATTRIB.gclid||'',
+      gbraid:ATTRIB.gbraid||'',
+      wbraid:ATTRIB.wbraid||'',
+      utm_source:ATTRIB.utm_source||'',
+      utm_medium:ATTRIB.utm_medium||'',
+      utm_campaign:ATTRIB.utm_campaign||'',
+      enhanced_conversion_data:{phone_number:e164,first_name:name}
+    });
+
+    try{
+      if(window.oaiq){
+        window.oaiq("measure","lead_created",{type:"customer_action"},{event_id:eventId});
+      }
+    }catch(err){}
+
+    var leadData={
+      name:name,
+      phone:e164,
+      purpose:purpose,
+      visit:visit,
+      buyer:buyer,
+      source:source,
+      page:location.href,
+      event_id:eventId,
+      oppref:ATTRIB.oppref||'',
+      gclid:ATTRIB.gclid||'',
+      utm_source:ATTRIB.utm_source||'',
+      utm_medium:ATTRIB.utm_medium||'',
+      utm_campaign:ATTRIB.utm_campaign||'',
+      ts:new Date().toISOString()
+    };
+
+    /* Send to server Conversions API (CAPI) endpoint */
+    try{
+      if(navigator.sendBeacon){
+        var blob=new Blob([JSON.stringify(leadData)],{type:'application/json'});
+        navigator.sendBeacon('/api/lead',blob);
+      }else{
+        fetch('/api/lead',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          keepalive:true,
+          body:JSON.stringify(leadData)
+        });
+      }
+    }catch(err){}
+
+    /* Hand lead to Google Apps Script webhook as well */
     if(LEAD_WEBHOOK_URL){
-      var body=new URLSearchParams({name:name,phone:e164,purpose:purpose,visit:visit,buyer:buyer,source:source,page:location.href,gclid:ATTRIB.gclid||'',utm_source:ATTRIB.utm_source||'',utm_medium:ATTRIB.utm_medium||'',utm_campaign:ATTRIB.utm_campaign||'',ts:new Date().toISOString()});
+      var body=new URLSearchParams(leadData);
       var queued=false;
       try{queued=navigator.sendBeacon&&navigator.sendBeacon(LEAD_WEBHOOK_URL,body)}catch(err){}
       if(!queued){try{fetch(LEAD_WEBHOOK_URL,{method:'POST',mode:'no-cors',keepalive:true,body:body})}catch(err){}}
@@ -802,7 +866,7 @@ function bindLeadForm(f,source){
     var btn=f.querySelector('[type=submit]');
     if(btn){btn.disabled=true;btn.textContent='Sending…'}
     /* short pause so the generate_lead tag can fire before the page unloads */
-    setTimeout(function(){window.location.href='thank-you.html'},400);
+    setTimeout(function(){window.location.href='thank-you.html?eid='+encodeURIComponent(eventId)},400);
   });
 }
 bindLeadForm(document.getElementById('pageForm'),'page');
